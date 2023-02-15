@@ -1,0 +1,4 @@
+enum SlidableAction{
+  delete,
+  favorite,
+}
