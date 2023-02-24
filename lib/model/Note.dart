@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class NoteFields {
   static final List<String> values = [
     id,
@@ -50,13 +52,13 @@ class Note {
   });
 
   Map<String, Object?> toJson() => {
-    NoteFields.id: id,
-    NoteFields.title: title,
-    NoteFields.content: content,
-    NoteFields.prioritise: prioritise ? 0 : 1,
-    NoteFields.createdTime: createdTime.toIso8601String(),
-    NoteFields.lastModifyTime: lastModifyTime.toIso8601String(),
-  };
+        NoteFields.id: id,
+        NoteFields.title: title,
+        NoteFields.content: content,
+        NoteFields.prioritise: prioritise ? 0 : 1,
+        NoteFields.createdTime: createdTime.toIso8601String(),
+        NoteFields.lastModifyTime: lastModifyTime.toIso8601String(),
+      };
 
   Note copy({
     int? id,
@@ -76,12 +78,39 @@ class Note {
       );
 
   static Note fromJson(Map<String, Object?> json) => Note(
-    id: json[NoteFields.id] as int?,
-    title: json[NoteFields.title] as String,
-    content: json[NoteFields.content] as String,
-    prioritise: json[NoteFields.prioritise] == 0,
-    createdTime: DateTime.parse(json[NoteFields.createdTime] as String),
-    lastModifyTime:
-    DateTime.parse(json[NoteFields.lastModifyTime] as String),
-  );
+        id: json[NoteFields.id] as int?,
+        title: json[NoteFields.title] as String,
+        content: json[NoteFields.content] as String,
+        prioritise: json[NoteFields.prioritise] == 0,
+        createdTime: DateTime.parse(json[NoteFields.createdTime] as String),
+        lastModifyTime:
+            DateTime.parse(json[NoteFields.lastModifyTime] as String),
+      );
+
+  factory Note.fromFirebase(
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+    SnapshotOptions? options,
+  ) {
+    final data = snapshot.data();
+    return Note(
+      id: data?[NoteFields.id],
+      title: data?[NoteFields.title],
+      content: data?[NoteFields.content],
+      prioritise: data?[NoteFields.prioritise] == 0,
+      createdTime: DateTime.parse(data?[NoteFields.createdTime] as String),
+      lastModifyTime:
+          DateTime.parse(data?[NoteFields.lastModifyTime] as String),
+    );
+  }
+
+  Map<String, dynamic> toFirebase() {
+    return {
+      NoteFields.id: id,
+      NoteFields.title: title,
+      NoteFields.content: content,
+      NoteFields.prioritise: prioritise ? 0 : 1,
+      NoteFields.createdTime: createdTime.toIso8601String(),
+      NoteFields.lastModifyTime: lastModifyTime.toIso8601String(),
+    };
+  }
 }

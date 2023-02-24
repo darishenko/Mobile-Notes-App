@@ -1,3 +1,6 @@
+// ignore_for_file: use_build_context_synchronously, unrelated_type_equality_checks
+
+import 'package:intl/intl.dart';
 import 'package:notes_app/pages/NoteDateilPage.dart';
 import 'package:notes_app/service/NotesDatabase.dart';
 import 'package:flutter/material.dart';
@@ -6,24 +9,34 @@ import 'package:flutter_slidable/flutter_slidable.dart';
 import '../model/SlidableAction.dart';
 
 import '../model/Note.dart';
+import '../service/NotesFirebaseDatabase.dart';
+import '../service/internetConnection.dart';
 
 class NotesPage extends StatefulWidget {
-  const NotesPage({super.key});
+  bool page;
+
+  NotesPage(this.page, {super.key});
 
   @override
-  _NotesPageState createState() => _NotesPageState();
+  _NotesPageState createState() => _NotesPageState(this.page);
 }
 
 class _NotesPageState extends State<NotesPage> {
   TextEditingController searchString = TextEditingController();
 
-  late List<Note> notes;
+  bool isFirebaseNotes = false;
+  late List<Note> currentNotes;
   bool isLoading = false;
+
+  _NotesPageState(this.isFirebaseNotes) {
+    isFirebaseNotes = isFirebaseNotes;
+  }
 
   @override
   void initState() {
     super.initState();
     refreshNotes();
+    initialiseFirebase();
   }
 
   @override
@@ -34,9 +47,13 @@ class _NotesPageState extends State<NotesPage> {
 
   Future refreshNotes() async {
     setState(() => isLoading = true);
+    currentNotes = [];
     searchString.text.isNotEmpty
-        ? notes = await NoteDatabase.instance.searchNote(searchString.text)
-        : notes = await NoteDatabase.instance.readAllNote();
+        ? currentNotes =
+            await NoteDatabase.instance.searchNote(searchString.text)
+        : isFirebaseNotes
+            ? currentNotes = await NotesFirebaseDatabase.readAllNotes()
+            : currentNotes = await NoteDatabase.instance.readAllNote();
     setState(() => isLoading = false);
   }
 
@@ -44,9 +61,9 @@ class _NotesPageState extends State<NotesPage> {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white30,
         appBar: AppBar(
-          backgroundColor: Colors.white30,
-          title: /*const Text('Notes'),*/
-          Container(
+          backgroundColor: isFirebaseNotes ? Colors.white30 : Colors.pinkAccent,
+          centerTitle: true,
+          title: Container(
             height: 40,
             width: double.infinity,
             decoration: BoxDecoration(
@@ -58,7 +75,6 @@ class _NotesPageState extends State<NotesPage> {
                 controller: searchString,
                 onChanged: (value) {
                   setState(() {
-                    // ignore: unrelated_type_equality_checks
                     searchString == value;
                     refreshNotes();
                   });
@@ -73,69 +89,81 @@ class _NotesPageState extends State<NotesPage> {
                       refreshNotes();
                     },
                   ),
-                  prefixIcon:  const Icon(
-                      Icons.search,
-                    ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                  ),
                   hintText: 'Search...',
                   border: InputBorder.none,
                 ),
               ),
             ),
           ),
+          actions: [
+            IconButton(
+              onPressed: () {
+                hasInternetConnection().then((value) {
+                  if (value) {
+                    isFirebaseNotes = !isFirebaseNotes;
+                  } else {
+                    if (isFirebaseNotes) isFirebaseNotes = !isFirebaseNotes;
+                    showSnackBar(context, "NO\tINTERNET\tCONNECTION!");
+                  }
+                });
+                refreshNotes();
+              },
+              icon: const Icon(
+                Icons.cloud,
+                color: Colors.white,
+              ),
+            ),
+          ],
         ),
         body: Center(
-          child: isLoading
-              ? const CircularProgressIndicator(
-                  color: Colors.amberAccent,
-                )
-              : notes.isEmpty
-                  ? const Text(
-                      'No notes',
-                      style: TextStyle(
-                        color: Colors.amberAccent,
+          child: checkNotesState()
+              ? notesStateWidget()
+              : ListView.builder(
+                  itemCount: currentNotes.length,
+                  itemBuilder: (context, index) {
+                    final note = currentNotes[index];
+                    return Slidable(
+                      key: Key(note.title),
+                      dismissal: SlidableDismissal(
+                        child: const SlidableDrawerDismissal(),
+                        onDismissed: (type) {
+                          final action = type == SlideActionType.primary
+                              ? SlidableAction.favorite
+                              : SlidableAction.delete;
+                          onDismissed(note, action);
+                          refreshNotes();
+                        },
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: notes.length,
-                      itemBuilder: (context, index) {
-                        final item = notes[index];
-                        return Slidable(
-                          key: Key(item.title),
-                          dismissal: SlidableDismissal(
-                            child: const SlidableDrawerDismissal(),
-                            onDismissed: (type) {
-                              final action = type == SlideActionType.primary
-                                  ? SlidableAction.favorite
-                                  : SlidableAction.delete;
-
-                              onDismissed(index, action);
-                            },
-                          ),
-                          actionExtentRatio: 0.35,
-                          actionPane: const SlidableDrawerActionPane(),
-                          actions: <Widget>[
-                            IconSlideAction(
-                              color: Colors.pinkAccent,
-                              icon: Icons.favorite,
-                              onTap: () =>
-                                  onDismissed(index, SlidableAction.favorite),
-                            ),
-                          ],
-                          secondaryActions: <Widget>[
-                            IconSlideAction(
-                              color: Colors.amberAccent,
-                              icon: Icons.delete,
-                              foregroundColor: Colors.white,
-                              onTap: () {
-                                return onDismissed(
-                                    index, SlidableAction.delete);
-                              },
-                            ),
-                          ],
-                          child: buildNote(item),
-                        );
-                      },
-                    ),
+                      actionExtentRatio: 0.45,
+                      actionPane: const SlidableDrawerActionPane(),
+                      actions: <Widget>[
+                        IconSlideAction(
+                          color: Colors.pinkAccent,
+                          icon: Icons.favorite,
+                          onTap: () {
+                            onDismissed(note, SlidableAction.favorite);
+                            refreshNotes();
+                          },
+                        ),
+                      ],
+                      secondaryActions: <Widget>[
+                        IconSlideAction(
+                          color: Colors.amberAccent,
+                          icon: Icons.delete,
+                          foregroundColor: Colors.white,
+                          onTap: () {
+                            onDismissed(note, SlidableAction.delete);
+                            refreshNotes();
+                          },
+                        ),
+                      ],
+                      child: buildNote(note),
+                    );
+                  },
+                ),
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.black54,
@@ -148,7 +176,8 @@ class _NotesPageState extends State<NotesPage> {
             await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => NoteDetailPage(null),
+                  builder: (context) =>
+                      NoteDetailPage(null, null, isFirebaseNotes),
                 ));
             refreshNotes();
           },
@@ -169,16 +198,49 @@ class _NotesPageState extends State<NotesPage> {
               ),
               Expanded(
                 child: ListTile(
-                  title: Text(note.title),
+                  title: Text(
+                    note.title,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.amberAccent,
+                      fontSize: 20,
+                    ),
+                  ),
                   textColor: Colors.white,
+                  titleTextStyle: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
                   onTap: () async {
                     await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => NoteDetailPage(note),
+                          builder: (context) =>
+                              NoteDetailPage(note, ' ', isFirebaseNotes),
                         ));
                     refreshNotes();
                   },
+                  subtitle: Column(children: <Widget>[
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Text(
+                        note.content,
+                        maxLines: 2,
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white70),
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        '\n${DateFormat('yyyy-MM-dd – kk:mm').format(note.lastModifyTime)}',
+                        maxLines: 2,
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.pink,
+                        ),
+                      ),
+                    ),
+                  ]),
                 ),
               ),
             ],
@@ -186,34 +248,31 @@ class _NotesPageState extends State<NotesPage> {
         ),
       );
 
-  void onDismissed(int index, SlidableAction action) {
-    final item = notes[index];
-    setState(() => notes.removeAt(index));
+  void onDismissed(Note note, SlidableAction action) async {
+    setState(() => currentNotes.remove(note));
 
     switch (action) {
       case SlidableAction.delete:
         {
-          NoteDatabase.instance.deleteNote(item.id!);
-          showSnackBar(context, "${item.title} has been deleted.");
+          deleteNoteDialog(note);
           break;
         }
-
       case SlidableAction.favorite:
         {
-          item.changePrioritise();
-          NoteDatabase.instance.updateNote(item);
-
-          item.prioritise
-          ? showSnackBar(context, "${item.title} has been added to favorites.")
-          : showSnackBar(context, "${item.title} has been deleted from favorites.");
-
+          note.changePrioritise();
+          await NoteDatabase.instance.updateNote(note);
+          await NotesFirebaseDatabase.updateNote(note);
+          note.prioritise
+              ? showSnackBar(
+                  context, "${note.title} has been added to favorites.")
+              : showSnackBar(
+                  context, "${note.title} has been deleted from favorites.");
           break;
         }
     }
-    refreshNotes();
   }
 
-  showSnackBar(BuildContext context, text) {
+  void showSnackBar(BuildContext context, text) {
     if (text is String) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(text),
@@ -221,5 +280,92 @@ class _NotesPageState extends State<NotesPage> {
     } else if (text is Widget) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: text));
     }
+  }
+
+  Widget? notesStateWidget() {
+    if (isLoading) {
+      return const CircularProgressIndicator(
+        color: Colors.amberAccent,
+      );
+    }
+
+    if (currentNotes.isEmpty) {
+      return const Text(
+        'No notes',
+        style: TextStyle(
+          color: Colors.amberAccent,
+        ),
+      );
+    }
+
+    return null;
+  }
+
+  bool checkNotesState() {
+    if (isFirebaseNotes) {
+      hasInternetConnection().then((result) {
+        if (!result) return true;
+      });
+    }
+    if (isLoading || currentNotes.isEmpty) return true;
+
+    return false;
+  }
+
+  Future<void> deleteNoteDialog(Note note) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white30,
+          title: const Text('Delete note'),
+          titleTextStyle: const TextStyle(
+            color: Colors.amberAccent,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+          content: SingleChildScrollView(
+            child: ListBody(
+              children: <Widget>[
+                Text('Would you like to delete "${note.title}"?'),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Colors.pink,
+                ),
+              ),
+              onPressed: () async {
+                await deleteNote(note);
+                showSnackBar(context, "${note.title} has been deleted.");
+                Navigator.of(context).pop();
+                refreshNotes();
+              },
+            ),
+            TextButton(
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.pink,
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  deleteNote(Note note) async {
+    await NoteDatabase.instance.deleteNote(note.id!);
+    await NotesFirebaseDatabase.deleteNote(note);
   }
 }

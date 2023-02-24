@@ -28,9 +28,15 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  cloud_firestore:
+  firebase_database: ^10.0.11
+  firebase_core: ^2.5.0
   basic_utils: ^5.4.2
   flutter_slidable: 0.6.0
+  connectivity_plus: ^3.0.2
+  flutter_bloc: ^8.1.1
   auto_size_text: ^3.0.0
+  intl: ^0.18.0
   flutter:
     sdk: flutter
   sqflite: ^2.2.4+1

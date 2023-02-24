@@ -1,28 +1,38 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:notes_app/pages/NotesPage.dart';
 
 import '../model/Note.dart';
 import '../service/NotesDatabase.dart';
+import '../service/NotesFirebaseDatabase.dart';
 
 class NoteDetailPage extends StatefulWidget {
   Note? note;
+  String? noteId;
+  bool page;
 
-  NoteDetailPage(this.note, {super.key});
+  NoteDetailPage(this.note, this.noteId, this.page, {super.key});
 
   @override
-  State<StatefulWidget> createState() => _NoteDetailPageState(this.note);
+  State<StatefulWidget> createState() =>
+      _NoteDetailPageState(note, noteId, page);
 }
 
 class _NoteDetailPageState extends State<NoteDetailPage> {
   TextEditingController titleController = TextEditingController();
   TextEditingController contentController = TextEditingController();
   Note? note;
+  String? noteId;
+  bool page;
+  final docNotes = FirebaseFirestore.instance.collection("_notes").doc();
 
-  _NoteDetailPageState(this.note) {
+  _NoteDetailPageState(this.note, this.noteId, this.page) {
     if (note != null) {
       titleController.text = note!.title;
       contentController.text = note!.content;
+      noteId = noteId;
     }
+    page = page;
   }
 
   @override
@@ -39,7 +49,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 IconButton(
                   color: Colors.amberAccent,
                   icon: const Icon(Icons.save),
-                  onPressed: () {
+                  onPressed: () async {
                     addNote();
                   },
                 ),
@@ -67,7 +77,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
             hintText: hintText,
             focusedBorder: const OutlineInputBorder(
               borderSide: BorderSide(color: Colors.amberAccent),
-              //borderRadius: BorderRadius.circular(15),
             ),
           ),
           style: const TextStyle(
@@ -78,12 +87,16 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     );
   }
 
-  void moveToLastScreen() {
-    Navigator.pop(context, true);
+  void moveToLastScreen() async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NotesPage(page),
+        ));
   }
 
   void addNote() async {
-    if (titleController.text.isNotEmpty && contentController.text.isNotEmpty) {
+    if (titleController.text.isNotEmpty) {
       if (note == null) {
         note = Note(
           id: null,
@@ -101,8 +114,10 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
       if (note!.id != null) {
         await NoteDatabase.instance.updateNote(note!);
+        await NotesFirebaseDatabase.updateNote(note!);
       } else {
-        await NoteDatabase.instance.createNote(note!);
+        note = await NoteDatabase.instance.createNote(note!);
+        await NotesFirebaseDatabase.createNote(note!);
       }
     }
     moveToLastScreen();
