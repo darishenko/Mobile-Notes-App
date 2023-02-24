@@ -1,5 +1,4 @@
 // ignore_for_file: non_constant_identifier_names
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
@@ -11,10 +10,19 @@ void initialiseFirebase() async {
 
 class NotesFirebaseDatabase {
   final String NOTE_DOC_NAME = '_notes';
+  static NotesFirebaseDatabase instance = NotesFirebaseDatabase._init();
+  static CollectionReference<Map<String, dynamic>>? _firebaseStore;
 
-  static Future<List<Note>> readAllNotes() async {
-    var notes = FirebaseFirestore.instance
-        .collection('_notes')
+  NotesFirebaseDatabase._init();
+
+  Future<CollectionReference<Map<String, dynamic>>> get firebaseStore async {
+    _firebaseStore ??= FirebaseFirestore.instance.collection(NOTE_DOC_NAME);
+    return _firebaseStore!;
+  }
+
+  Future<List<Note>> readAllNotes() async {
+    final firebaseFireStore = await instance.firebaseStore;
+    var notes = firebaseFireStore
         .orderBy(NoteFields.prioritise)
         .orderBy(NoteFields.lastModifyTime, descending: true);
     var querySnapshot = await notes.get();
@@ -27,23 +35,9 @@ class NotesFirebaseDatabase {
     return notesList;
   }
 
-  static Future<Map<String, Note>> readAllNotesMap() async {
-    var notes = FirebaseFirestore.instance.collection('_notes');
-    var querySnapshot = await notes.get();
-    var docs = querySnapshot.docs;
-    Map<String, Note> notesList = {};
-
-    for (var _querySnapshot in docs) {
-      var id = _querySnapshot.id;
-      var note = Note.fromFirebase(_querySnapshot, null);
-      notesList.putIfAbsent(id, () => note);
-    }
-    return notesList;
-  }
-
-  static Future<String?> findNoteId(Note note) async {
-    var notes = FirebaseFirestore.instance.collection('_notes');
-    var querySnapshot = await notes.get();
+  Future<String?> findNoteId(Note note) async {
+    final firebaseFireStore = await instance.firebaseStore;
+    var querySnapshot = await firebaseFireStore.get();
     var docs = querySnapshot.docs;
 
     for (var _querySnapshot in docs) {
@@ -56,32 +50,24 @@ class NotesFirebaseDatabase {
     return null;
   }
 
-  static Future<void> deleteNote(Note note) async {
-    String? id = await NotesFirebaseDatabase.findNoteId(note);
-
-    await FirebaseFirestore.instance.collection("_notes").doc(id).delete();
+  Future<void> deleteNote(Note note) async {
+    String? id = await findNoteId(note);
+    final firebaseFireStore = await instance.firebaseStore;
+    await firebaseFireStore.doc(id).delete();
   }
 
-  static Future<void> updateNote(Note note) async {
-    String? id = await NotesFirebaseDatabase.findNoteId(note);
-
-    await FirebaseFirestore.instance
-        .collection("_notes")
-        .doc(id)
-        .set(note.toFirebase());
+  Future<void> updateNote(Note note) async {
+    String? id = await findNoteId(note);
+    final firebaseFireStore = await instance.firebaseStore;
+    await firebaseFireStore.doc(id).set(note.toFirebase());
   }
 
-  static Future<void> createNote(Note note) async {
-    FirebaseFirestore.instance
-        .collection('_notes')
-        .withConverter(
-          fromFirestore: Note.fromFirebase,
-          toFirestore: (Note note, options) => note.toFirebase(),
-        )
-        .doc("NA");
-    await FirebaseFirestore.instance
-        .collection('_notes')
-        .doc()
-        .set(note.toFirebase());
+  Future<void> createNote(Note note) async {
+    final firebaseFireStore = await instance.firebaseStore;
+    firebaseFireStore.withConverter(
+      fromFirestore: Note.fromFirebase,
+      toFirestore: (Note note, options) => note.toFirebase(),
+    );
+    await firebaseFireStore.doc().set(note.toFirebase());
   }
 }

@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously, unrelated_type_equality_checks
 
 import 'package:intl/intl.dart';
-import 'package:notes_app/pages/NoteDateilPage.dart';
+import 'package:notes_app/pages/NoteDetailPage.dart';
 import 'package:notes_app/service/NotesDatabase.dart';
 import 'package:flutter/material.dart';
 
@@ -52,7 +52,7 @@ class _NotesPageState extends State<NotesPage> {
         ? currentNotes =
             await NoteDatabase.instance.searchNote(searchString.text)
         : isFirebaseNotes
-            ? currentNotes = await NotesFirebaseDatabase.readAllNotes()
+            ? currentNotes = await NotesFirebaseDatabase.instance.readAllNotes()
             : currentNotes = await NoteDatabase.instance.readAllNote();
     setState(() => isLoading = false);
   }
@@ -134,7 +134,6 @@ class _NotesPageState extends State<NotesPage> {
                               ? SlidableAction.favorite
                               : SlidableAction.delete;
                           onDismissed(note, action);
-                          refreshNotes();
                         },
                       ),
                       actionExtentRatio: 0.45,
@@ -145,7 +144,6 @@ class _NotesPageState extends State<NotesPage> {
                           icon: Icons.favorite,
                           onTap: () {
                             onDismissed(note, SlidableAction.favorite);
-                            refreshNotes();
                           },
                         ),
                       ],
@@ -156,7 +154,6 @@ class _NotesPageState extends State<NotesPage> {
                           foregroundColor: Colors.white,
                           onTap: () {
                             onDismissed(note, SlidableAction.delete);
-                            refreshNotes();
                           },
                         ),
                       ],
@@ -261,7 +258,7 @@ class _NotesPageState extends State<NotesPage> {
         {
           note.changePrioritise();
           await NoteDatabase.instance.updateNote(note);
-          await NotesFirebaseDatabase.updateNote(note);
+          await NotesFirebaseDatabase.instance.updateNote(note);
           note.prioritise
               ? showSnackBar(
                   context, "${note.title} has been added to favorites.")
@@ -270,6 +267,7 @@ class _NotesPageState extends State<NotesPage> {
           break;
         }
     }
+    refreshNotes();
   }
 
   void showSnackBar(BuildContext context, text) {
@@ -366,6 +364,6 @@ class _NotesPageState extends State<NotesPage> {
 
   deleteNote(Note note) async {
     await NoteDatabase.instance.deleteNote(note.id!);
-    await NotesFirebaseDatabase.deleteNote(note);
+    await NotesFirebaseDatabase.instance.deleteNote(note);
   }
 }

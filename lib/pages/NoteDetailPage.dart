@@ -1,3 +1,5 @@
+// ignore_for_file: must_be_immutable
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:notes_app/pages/NotesPage.dart';
@@ -114,10 +116,10 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
       if (note!.id != null) {
         await NoteDatabase.instance.updateNote(note!);
-        await NotesFirebaseDatabase.updateNote(note!);
+        NotesFirebaseDatabase.instance.updateNote(note!);
       } else {
         note = await NoteDatabase.instance.createNote(note!);
-        await NotesFirebaseDatabase.createNote(note!);
+        NotesFirebaseDatabase.instance.createNote(note!);
       }
     }
     moveToLastScreen();
