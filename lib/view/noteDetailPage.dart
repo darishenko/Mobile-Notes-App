@@ -2,11 +2,11 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:notes_app/pages/NotesPage.dart';
+import 'package:notes_app/view/notesPage.dart';
 
-import '../model/Note.dart';
-import '../service/NotesDatabase.dart';
-import '../service/NotesFirebaseDatabase.dart';
+import '../model/note.dart';
+import '../service/notesDatabase.dart';
+import '../service/notesFirebaseDatabase.dart';
 
 class NoteDetailPage extends StatefulWidget {
   Note? note;

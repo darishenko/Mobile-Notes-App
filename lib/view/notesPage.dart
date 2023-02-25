@@ -1,15 +1,15 @@
 // ignore_for_file: use_build_context_synchronously, unrelated_type_equality_checks
 
 import 'package:intl/intl.dart';
-import 'package:notes_app/pages/NoteDetailPage.dart';
-import 'package:notes_app/service/NotesDatabase.dart';
+import 'package:notes_app/view/noteDetailPage.dart';
+import 'package:notes_app/service/notesDatabase.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_slidable/flutter_slidable.dart';
-import '../model/SlidableAction.dart';
+import '../model/slidableAction.dart';
 
-import '../model/Note.dart';
-import '../service/NotesFirebaseDatabase.dart';
+import '../model/note.dart';
+import '../service/notesFirebaseDatabase.dart';
 import '../service/internetConnection.dart';
 
 class NotesPage extends StatefulWidget {

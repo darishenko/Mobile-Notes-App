@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:notes_app/model/Note.dart';
+import 'package:notes_app/model/note.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 

@@ -1,5 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:notes_app/pages/NotesPage.dart';
+import 'package:notes_app/view/notesPage.dart';
 import 'package:flutter/material.dart';
 
 Future<void> main() async {
